@@ -23,7 +23,7 @@ namespace EventStore.Core.XUnit.Tests.DataStructures.ProbabilisticFilter {
 
 		[Fact]
 		public void finalizer_does_not_crash_process_when_oom() {
-			Assert.Throws<OutOfMemoryException>(() => new AlignedMemory(1_000_000_000_000, 1));
+			Assert.Throws<OutOfMemoryException>(() => new AlignedMemory(long.MaxValue, 1));
 			GC.Collect();
 			GC.WaitForPendingFinalizers();
 		}
