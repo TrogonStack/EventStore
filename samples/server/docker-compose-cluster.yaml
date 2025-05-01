@@ -1,6 +1,12 @@
-version: "3.5"
-
 services:
+  volumes-provisioner:
+    image: hasnat/volumes-provisioner
+    environment:
+      PROVISION_DIRECTORIES: "1000:1000:0755:/tmp/certs"
+    volumes:
+      - certs:/tmp/certs
+    network_mode: none
+
   setup:
     image: eventstore/es-gencert-cli:1.0.2
     entrypoint: bash
@@ -14,25 +20,27 @@ services:
       && find . -type f -print0 | xargs -0 chmod 666"
     container_name: setup
     volumes:
-      - ./certs:/certs
+      - certs:/certs
+    depends_on:
+      - volumes-provisioner
 
-  node1.eventstore: &template
-    image: eventstore/eventstore:24.2.0-jammy
-    container_name: node1.eventstore
+  node1.kurrentdb: &template
+    image: docker.kurrent.io/kurrent-latest/kurrentdb:latest
+    container_name: node1.kurrentdb
     env_file:
       - vars.env
     environment:
-      - EVENTSTORE_INT_IP=172.30.240.11
-      - EVENTSTORE_ADVERTISE_HTTP_PORT_TO_CLIENT_AS=2111
-      - EVENTSTORE_GOSSIP_SEED=172.30.240.12:2113,172.30.240.13:2113
-      - EVENTSTORE_TRUSTED_ROOT_CERTIFICATES_PATH=/certs/ca
-      - EVENTSTORE_CERTIFICATE_FILE=/certs/node1/node.crt
-      - EVENTSTORE_CERTIFICATE_PRIVATE_KEY_FILE=/certs/node1/node.key
+      - KURRENTDB_REPLICATION_IP=172.30.240.11
+      - KURRENTDB_ADVERTISE_NODE_PORT_TO_CLIENT_AS=2111
+      - KURRENTDB_GOSSIP_SEED=172.30.240.12:2113,172.30.240.13:2113
+      - KURRENTDB_TRUSTED_ROOT_CERTIFICATES_PATH=/certs/ca
+      - KURRENTDB_CERTIFICATE_FILE=/certs/node1/node.crt
+      - KURRENTDB_CERTIFICATE_PRIVATE_KEY_FILE=/certs/node1/node.key
     healthcheck:
       test:
         [
           "CMD-SHELL",
-          "curl --fail --insecure https://node1.eventstore:2113/health/live || exit 1",
+          "curl --fail --insecure https://node1.kurrentdb:2113/health/live || exit 1",
         ]
       interval: 5s
       timeout: 5s
@@ -40,7 +48,7 @@ services:
     ports:
       - 2111:2113
     volumes:
-      - ./certs:/certs
+      - certs:/certs
     depends_on:
       - setup
     restart: always
@@ -48,23 +56,23 @@ services:
       clusternetwork:
         ipv4_address: 172.30.240.11
 
-  node2.eventstore:
+  node2.kurrentdb:
     <<: *template
-    container_name: node2.eventstore
+    container_name: node2.kurrentdb
     env_file:
       - vars.env
     environment:
-      - EVENTSTORE_INT_IP=172.30.240.12
-      - EVENTSTORE_ADVERTISE_HTTP_PORT_TO_CLIENT_AS=2112
-      - EVENTSTORE_GOSSIP_SEED=172.30.240.11:2113,172.30.240.13:2113
-      - EVENTSTORE_TRUSTED_ROOT_CERTIFICATES_PATH=/certs/ca
-      - EVENTSTORE_CERTIFICATE_FILE=/certs/node2/node.crt
-      - EVENTSTORE_CERTIFICATE_PRIVATE_KEY_FILE=/certs/node2/node.key
+      - KURRENTDB_REPLICATION_IP=172.30.240.12
+      - KURRENTDB_ADVERTISE_NODE_PORT_TO_CLIENT_AS=2112
+      - KURRENTDB_GOSSIP_SEED=172.30.240.11:2113,172.30.240.13:2113
+      - KURRENTDB_TRUSTED_ROOT_CERTIFICATES_PATH=/certs/ca
+      - KURRENTDB_CERTIFICATE_FILE=/certs/node2/node.crt
+      - KURRENTDB_CERTIFICATE_PRIVATE_KEY_FILE=/certs/node2/node.key
     healthcheck:
       test:
         [
           "CMD-SHELL",
-          "curl --fail --insecure https://node2.eventstore:2113/health/live || exit 1",
+          "curl --fail --insecure https://node2.kurrentdb:2113/health/live || exit 1",
         ]
       interval: 5s
       timeout: 5s
@@ -75,21 +83,21 @@ services:
       clusternetwork:
         ipv4_address: 172.30.240.12
 
-  node3.eventstore:
+  node3.kurrentdb:
     <<: *template
-    container_name: node3.eventstore
+    container_name: node3.kurrentdb
     environment:
-      - EVENTSTORE_INT_IP=172.30.240.13
-      - EVENTSTORE_ADVERTISE_HTTP_PORT_TO_CLIENT_AS=2113
-      - EVENTSTORE_GOSSIP_SEED=172.30.240.11:2113,172.30.240.12:2113
-      - EVENTSTORE_TRUSTED_ROOT_CERTIFICATES_PATH=/certs/ca
-      - EVENTSTORE_CERTIFICATE_FILE=/certs/node3/node.crt
-      - EVENTSTORE_CERTIFICATE_PRIVATE_KEY_FILE=/certs/node3/node.key
+      - KURRENTDB_REPLICATION_IP=172.30.240.13
+      - KURRENTDB_ADVERTISE_NODE_PORT_TO_CLIENT_AS=2113
+      - KURRENTDB_GOSSIP_SEED=172.30.240.11:2113,172.30.240.12:2113
+      - KURRENTDB_TRUSTED_ROOT_CERTIFICATES_PATH=/certs/ca
+      - KURRENTDB_CERTIFICATE_FILE=/certs/node3/node.crt
+      - KURRENTDB_CERTIFICATE_PRIVATE_KEY_FILE=/certs/node3/node.key
     healthcheck:
       test:
         [
           "CMD-SHELL",
-          "curl --fail --insecure https://node3.eventstore:2113/health/live || exit 1",
+          "curl --fail --insecure https://node3.kurrentdb:2113/health/live || exit 1",
         ]
       interval: 5s
       timeout: 5s
@@ -102,9 +110,12 @@ services:
 
 networks:
   clusternetwork:
-    name: eventstoredb.local
+    name: kurrentdb.local
     driver: bridge
     ipam:
       driver: default
       config:
         - subnet: 172.30.240.0/24
+
+volumes:
+  certs:

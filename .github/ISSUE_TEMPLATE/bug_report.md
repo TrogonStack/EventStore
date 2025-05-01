@@ -2,7 +2,7 @@
 name: Bug report
 about: Create a report to help us improve
 title: ''
-labels: 'kind/bug report'
+labels: 'bug'
 assignees: ''
 
 ---
@@ -26,12 +26,12 @@ A clear and concise description of what actually happened.
 **Config/Logs/Screenshots**
 If applicable, please attach your node configuration, logs or any screenshots.
 
-**EventStore details**
- - EventStore server version:
+**KurrentDB details**
+ - KurrentDB server version:
 
  - Operating system:
 
- - EventStore client library and version (if applicable):
+ - KurrentDB client library and version (if applicable):
 
 **Additional context**
 Add any other context about the problem here.

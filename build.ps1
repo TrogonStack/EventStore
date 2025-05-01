@@ -5,9 +5,6 @@ Param(
     [Parameter(HelpMessage="Configuration (Debug, Release)")]
     [ValidateSet("Debug","Release")]
     [string]$Configuration = "Release",
-    [Parameter(HelpMessage="Build UI (yes,no)")]
-    [ValidateSet("yes","no")]
-    [string]$BuildUI = "no",
     [Parameter(HelpMessage="Run Tests (yes,no)")]
     [ValidateSet("yes","no")]
     [string]$RunTests = "no"
@@ -45,11 +42,7 @@ Function Start-Build{
     $baseDirectory = $PSScriptRoot
     $srcDirectory = Join-Path $baseDirectory "src"
     $binDirectory = Join-Path $baseDirectory "bin"
-    $libsDirectory = Join-Path $srcDirectory "libs"
-    $eventStoreSolution = Join-Path $srcDirectory "EventStore.sln"
-
-    $uiSrcDirectory = Join-Path $srcDirectory "EventStore.UI\"
-    $uiDistDirectory = Join-Path $srcDirectory "EventStore.ClusterNode.Web\clusternode-web\"
+    $kurrentDbSolution = Join-Path $srcDirectory "KurrentDB.sln"
 
     Write-Info "Build Configuration"
     Write-Info "-------------------"
@@ -57,34 +50,14 @@ Function Start-Build{
     Write-Info "Version: $Version"
     Write-Info "Platform: $platform"
     Write-Info "Configuration: $Configuration"
-    Write-Info "Build UI: $BuildUI"
     Write-Info "Run Tests: $RunTests"
 
-    #Build Event Store UI
-    if ($BuildUI -eq "yes") {
-        #Build the UI    
-        if (Test-Path $uiDistDirectory) {
-            Remove-Item -Recurse -Force $uiDistDirectory
-        }
-        Push-Location $uiSrcDirectory
-            if(-Not (Test-Path (Join-Path $uiSrcDirectory "package.json"))) {
-                Exec { git submodule update --init ./ }
-            }
-            Exec { npm install bower@~1.8.14 -g }
-            Exec { bower install --allow-root }
-            Exec { npm install gulp-cli -g }
-            Exec { npm install }
-            Exec { gulp dist }
-            Exec { mv es-dist $uiDistDirectory }
-        Pop-Location
-    }
-
-    #Build Event Store (Patch AssemblyInfo, Build, Revert AssemblyInfo)
+    #Build KurrentDB (Patch AssemblyInfo, Build, Revert AssemblyInfo)
     Remove-Item -Force -Recurse $binDirectory -ErrorAction SilentlyContinue > $null
 
-    $versionInfoFile = Resolve-Path (Join-Path $srcDirectory (Join-Path "EventStore.Common" (Join-Path "Utils" "VersionInfo.cs"))) -Relative
+    $versionInfoFile = Resolve-Path (Join-Path $srcDirectory (Join-Path "KurrentDB.Common" (Join-Path "Utils" "VersionInfo.cs"))) -Relative
     try {
-        Exec { dotnet build -c $configuration /p:Version=$Version /p:Platform=x64 $eventStoreSolution }
+        Exec { dotnet build -c $configuration /p:Version=$Version /p:Platform=x64 $kurrentDbSolution }
     } finally {
         Write-Info "Reverting $versionInfoFile to original state."
         & { git checkout --quiet $versionInfoFile }
